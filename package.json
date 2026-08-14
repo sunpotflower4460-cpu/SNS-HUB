@@ -15,6 +15,7 @@
     "hub:upsert": "tsx scripts/hub.ts upsert",
     "hub:attach-social": "tsx scripts/hub.ts social",
     "analytics:report": "tsx scripts/analytics-report.ts",
+    "links:check-safe": "tsx scripts/check-links-safe.ts",
     "security:scan": "node scripts/check-secrets.mjs",
     "security:scan:build": "node scripts/check-secrets.mjs --build-only",
     "ci": "bash scripts/local-ci.sh"

@@ -2,6 +2,7 @@
 set -euo pipefail
 npm run security:scan
 npm run validate:data
+npm run links:check-safe
 npm test
 npm run typecheck
 npm run lint
