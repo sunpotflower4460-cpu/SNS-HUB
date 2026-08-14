@@ -14,6 +14,8 @@ This matrix maps the handoff acceptance requirements to repository checks. A gre
 - future-dated verification/publication data is rejected or treated as unknown
 - canonical replay is idempotent; stable public slug cannot silently change
 - canonical route snapshots are authoritative, while historical social backlinks are retained
+- publication state cannot silently regress from `published` back to `ready`; first social success records `firstPublishedAt`
+- stored `published` / `archived` records require `firstPublishedAt`, while `staged` / `ready` records cannot contain published social backlinks
 - content manifest has a versioned JSON Schema and deterministic `contentVersion`
 
 ### Public pages and discovery
