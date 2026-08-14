@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "validate:data": "tsx scripts/hub.ts validate",
+    "validate:data": "tsx scripts/hub.ts validate && tsx scripts/validate-manifest.ts",
     "report:freshness": "tsx scripts/hub.ts freshness",
     "content:manifest": "tsx scripts/hub.ts manifest",
     "hub:upsert": "tsx scripts/hub.ts upsert",
