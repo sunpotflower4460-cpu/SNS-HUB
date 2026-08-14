@@ -8,6 +8,8 @@ test("archived item remains reachable but is not discoverable",()=>{const p=prod
 test("contentVersion is deterministic",()=>assert.equal(contentVersion(),contentVersion()));
 test("stable serializer ignores object key order",()=>assert.equal(stableStringify({b:1,a:2}),stableStringify({a:2,b:1})));
 test("route replay is content-idempotent",()=>{const p=products()[0],m=mergeCanonical(p,structuredClone(p));assert.deepEqual(m,p)});
+test("canonical route list is authoritative so removed routes stay removed",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);const incoming={...structuredClone(p),routes:[]};assert.deepEqual(mergeCanonical(p,incoming).routes,[])});
+test("canonical upsert preserves historical social backlinks",()=>{const p=structuredClone(products()[0]);p.social=[{platform:"x",postId:"old-post",url:"https://x.com/example/status/old",publishedAt:"2026-08-01T00:00:00Z"}];const incoming={...structuredClone(p),social:[]};assert.equal(mergeCanonical(p,incoming).social.length,1)});
 test("stable public slug cannot change",()=>{const p=products()[0];assert.throws(()=>mergeCanonical(p,{...structuredClone(p),slug:`${p.slug}-changed`}),/stable slug mismatch/)});
 test("inactive route is hidden",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.routes[0].status="REVERIFY_DUE";assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,0)});
 test("route without hub eligibility is hidden",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.routes[0].platforms=["x"];assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,0)});
