@@ -38,7 +38,7 @@ Implemented:
 - route-click logging with HEAD-safe redirect endpoints and crawler exclusions
 - source secret scan plus streaming post-build `.next` scan, including large bundles/source maps
 - explicit output-file tracing for `data/**/*.json` and `schemas/**/*.json`
-- local CI gate that does not depend on GitHub Actions
+- reusable local CI gate plus pull-request CI with real dependency/build/runtime/browser verification
 
 ## Quick start
 
@@ -85,7 +85,7 @@ Key docs:
 - `docs/OPERATIONS.md` — freshness, links, rollback, per-platform state
 - `docs/ANALYTICS.md` — privacy-conscious event model
 - `docs/ACCEPTANCE_MATRIX.md` — handoff requirement coverage
-- `docs/RELEASE_CHECKLIST.md` — final real-build/mobile gates before merge
+- `docs/RELEASE_CHECKLIST.md` — deployment/activation checklist
 
 ## Safety rules
 
@@ -101,6 +101,10 @@ Key docs:
 
 ## Validation status
 
-The included 10 fixtures were checked against the product schema, taxonomy/alternative references, publication lifecycle invariants, and offline URL safety rules. Additional hardening has been exercised with dependency-free lifecycle/analytics/link tests and the source secret scanner; the large-file scanner was also tested against a generated file larger than 5 MB with a secret pattern placed near its end.
+The included fixtures pass the product schema, taxonomy/alternative references, publication lifecycle invariants, and offline URL safety rules. The large-file secret scanner was also exercised against a generated file larger than 5 MB with a secret pattern placed near its end.
 
-The current agent execution environment cannot reach the npm registry, so dependency installation and the **real-dependency** `npm run ci` / production `next build` still must run in a network-enabled local or deployment environment before this PR is merged. `scripts/local-ci.sh` is the release gate and finishes by scanning generated `.next` output for high-confidence secret patterns.
+Pull-request CI has now run the **real Node 22/npm dependency graph** and passed the full repository gate: source secret scan, data + manifest validation, offline link integrity, unit tests, TypeScript typecheck, ESLint, production `next build`, and post-build `.next` secret scanning.
+
+The built app was then started on the GitHub runner and smoke-tested over HTTP for Home, New, Search, problem, category, product, disclosure, content-version health, and product-health routes. Headless Chrome screenshots with Noto CJK were captured and visually reviewed at **320px, 390px, and 768px**; Japanese text wraps cleanly and no horizontal overflow, CTA clipping, or card-layout breakage was observed in the checked Home/product views.
+
+The remaining external gate is deployment: configure an HTTPS hosting origin for this server-rendered Next.js app and verify that its public `/_health/content-version` matches the expected Git-backed content version before Hub-dependent SNS publishing is enabled.
