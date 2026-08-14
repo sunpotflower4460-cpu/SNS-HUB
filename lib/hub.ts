@@ -28,6 +28,7 @@ export type Product = {
 };
 export type Taxonomy={id:string;slug:string;label:string;description:string};
 export type SocialBacklink=Product["social"][number];
+type PublicationStatus=Product["publication"]["status"];
 
 const ROOT=process.cwd();
 const DATA=path.join(ROOT,"data");
@@ -63,5 +64,12 @@ export function contentVersion(){const snapshot={categories:categories().slice()
 export function manifest(){const ps=products(),generatedAt=ps.flatMap(p=>[p.publication.updatedAt,p.freshness.lastProductVerifiedAt]).filter((x):x is string=>Boolean(x)).sort(compareStable).at(-1)||new Date(0).toISOString();return {schemaVersion:1,contentVersion:contentVersion(),generatedAt,productCount:ps.length}}
 export function formatDateJa(v:string|null){if(!v)return"未確認";const d=new Date(v);return Number.isNaN(d.valueOf())?"未確認":new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"short",day:"numeric"}).format(d)}
 export function mergeByKey<T>(a:T[],b:T[],key:(x:T)=>string){const m=new Map(a.map(x=>[key(x),x]));for(const x of b)m.set(key(x),x);return [...m.values()]}
-export function mergeCanonical(existing:Product|null,incoming:Product):Product{if(!existing)return incoming;if(existing.productId!==incoming.productId)throw new Error("productId mismatch");if(existing.slug!==incoming.slug)throw new Error(`stable slug mismatch: ${existing.slug} -> ${incoming.slug}`);return {...incoming,publication:{...incoming.publication,firstPublishedAt:existing.publication.firstPublishedAt??incoming.publication.firstPublishedAt},routes:incoming.routes,social:mergeByKey(existing.social,incoming.social,x=>`${x.platform}:${x.postId}`)}}
-export function attachSocialBacklink(p:Product,backlink:SocialBacklink,updatedAt=new Date().toISOString()):{product:Product;changed:boolean}{const key=`${backlink.platform}:${backlink.postId}`,current=p.social.find(x=>`${x.platform}:${x.postId}`===key),publishTransition=p.publication.status==="ready";if(current&&stableStringify(current)===stableStringify(backlink)&&!publishTransition)return {product:p,changed:false};return {product:{...p,social:mergeByKey(p.social,[backlink],x=>`${x.platform}:${x.postId}`),publication:{...p.publication,status:publishTransition?"published":p.publication.status,updatedAt}},changed:true}}
+function reconcilePublicationStatus(existing:PublicationStatus,incoming:PublicationStatus):PublicationStatus{
+  if(incoming==="archived")return "archived";
+  if(existing==="archived")return incoming==="published"?"published":"archived";
+  if(existing==="published")return "published";
+  if(existing==="ready"&&incoming==="staged")return "ready";
+  return incoming;
+}
+export function mergeCanonical(existing:Product|null,incoming:Product):Product{if(!existing)return incoming;if(existing.productId!==incoming.productId)throw new Error("productId mismatch");if(existing.slug!==incoming.slug)throw new Error(`stable slug mismatch: ${existing.slug} -> ${incoming.slug}`);const status=reconcilePublicationStatus(existing.publication.status,incoming.publication.status);return {...incoming,publication:{...incoming.publication,status,firstPublishedAt:existing.publication.firstPublishedAt??incoming.publication.firstPublishedAt},routes:incoming.routes,social:mergeByKey(existing.social,incoming.social,x=>`${x.platform}:${x.postId}`)}}
+export function attachSocialBacklink(p:Product,backlink:SocialBacklink,updatedAt=new Date().toISOString()):{product:Product;changed:boolean}{const key=`${backlink.platform}:${backlink.postId}`,current=p.social.find(x=>`${x.platform}:${x.postId}`===key),publishTransition=p.publication.status==="ready";if(current&&stableStringify(current)===stableStringify(backlink)&&!publishTransition)return {product:p,changed:false};return {product:{...p,social:mergeByKey(p.social,[backlink],x=>`${x.platform}:${x.postId}`),publication:{...p.publication,status:publishTransition?"published":p.publication.status,firstPublishedAt:publishTransition?(p.publication.firstPublishedAt??backlink.publishedAt):p.publication.firstPublishedAt,updatedAt}},changed:true}}
