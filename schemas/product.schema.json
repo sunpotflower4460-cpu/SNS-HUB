@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SNS-HUB canonical product",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion","productId","slug","name","brand","kind","categoryIds","problemTagIds","problemSolved","convenienceInOneSentence","whyInteresting","whoFor","whoCanSkip","tradeoffs","officialUrl","media","pricing","availability","scores","routes","alternatives","social","freshness","publication"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "productId": {"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},
+    "slug": {"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},
+    "name": {"type":"string","minLength":1},
+    "brand": {"type":"string","minLength":1},
+    "kind": {"enum":["physical","service","app","subscription","free-tool"]},
+    "categoryIds": {"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"}},
+    "problemTagIds": {"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"}},
+    "problemSolved": {"type":"string","minLength":1},
+    "convenienceInOneSentence": {"type":"string","minLength":1},
+    "whyInteresting": {"type":"string","minLength":1},
+    "whoFor": {"type":"array","minItems":1,"items":{"type":"string","minLength":1}},
+    "whoCanSkip": {"type":"array","minItems":1,"items":{"type":"string","minLength":1}},
+    "tradeoffs": {"type":"array","minItems":1,"items":{"type":"string","minLength":1}},
+    "officialUrl": {"type":"string","format":"uri","pattern":"^https://"},
+    "media": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["url","alt","rightsStatus"],"properties":{"url":{"type":"string","format":"uri","pattern":"^https://"},"alt":{"type":"string","minLength":1},"rightsStatus":{"enum":["affiliate-creative","explicitly-permitted","owned","unknown"]}}}},
+    "pricing": {"type":"object","additionalProperties":false,"required":["display","currency","verifiedAt"],"properties":{"display":{"anyOf":[{"type":"string","minLength":1},{"type":"null"}]},"currency":{"const":"JPY"},"verifiedAt":{"type":["string","null"],"format":"date-time"}}},
+    "availability": {"enum":["available","limited","unknown","unavailable","discontinued"]},
+    "scores": {"type":"object","required":["discoverySurprise","practicalUtility","clarity","evidenceStrength","audienceFit","valueSense","distinctiveness","shareability","risk"],"additionalProperties":false,"properties":{"discoverySurprise":{"type":"number","minimum":0,"maximum":100},"practicalUtility":{"type":"number","minimum":0,"maximum":100},"clarity":{"type":"number","minimum":0,"maximum":100},"evidenceStrength":{"type":"number","minimum":0,"maximum":100},"audienceFit":{"type":"number","minimum":0,"maximum":100},"valueSense":{"type":"number","minimum":0,"maximum":100},"distinctiveness":{"type":"number","minimum":0,"maximum":100},"shareability":{"type":"number","minimum":0,"maximum":100},"risk":{"type":"number","minimum":0,"maximum":100}}},
+    "routes": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["routeId","provider","merchant","url","routeType","platforms","status","destinationProductMatch","verifiedAt","disclosureRequired","notes"],"properties":{"routeId":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},"provider":{"enum":["amazon","rakuten","a8","valuecommerce","impact","direct","other"]},"merchant":{"type":"string","minLength":1},"url":{"type":"string","format":"uri","pattern":"^https://"},"routeType":{"enum":["affiliate","official","non-affiliate"]},"platforms":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["hub","x","instagram"]}},"status":{"enum":["ACTIVE","DEGRADED","REVERIFY_DUE","PROGRAM_PAUSED","DISABLED"]},"destinationProductMatch":{"type":"boolean"},"verifiedAt":{"type":"string","format":"date-time"},"disclosureRequired":{"type":"boolean"},"notes":{"type":["string","null"]}}}},
+    "alternatives": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["productId","relation","reason","verifiedAt"],"properties":{"productId":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]*$"},"relation":{"enum":["similar","cheaper","current-alternative","different-use-case"]},"reason":{"type":"string","minLength":1},"verifiedAt":{"type":"string","format":"date-time"}}}},
+    "social": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["platform","postId","url","publishedAt"],"properties":{"platform":{"enum":["x","instagram"]},"postId":{"type":"string","minLength":1},"url":{"type":"string","format":"uri","pattern":"^https://"},"publishedAt":{"type":"string","format":"date-time"}}}},
+    "freshness": {"type":"object","additionalProperties":false,"required":["lastProductVerifiedAt","lastPriceVerifiedAt","lastAffiliateRouteVerifiedAt"],"properties":{"lastProductVerifiedAt":{"type":["string","null"],"format":"date-time"},"lastPriceVerifiedAt":{"type":["string","null"],"format":"date-time"},"lastAffiliateRouteVerifiedAt":{"type":["string","null"],"format":"date-time"}}},
+    "publication": {"type":"object","additionalProperties":false,"required":["status","firstPublishedAt","updatedAt"],"properties":{"status":{"enum":["staged","ready","published","archived"]},"firstPublishedAt":{"type":["string","null"],"format":"date-time"},"updatedAt":{"type":["string","null"],"format":"date-time"}}}
+  }
+}

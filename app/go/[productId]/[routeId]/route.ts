@@ -1,0 +1,6 @@
+import {analyticsLogLine} from "@/lib/analytics";
+import {byId,healthyRoutes} from "@/lib/hub";
+export const dynamic="force-dynamic";
+async function resolve({params}:{params:Promise<{productId:string;routeId:string}>}){const {productId,routeId}=await params,p=byId(productId),route=p&&healthyRoutes(p).find(x=>x.routeId===routeId);return {productId,routeId,route}}
+export async function HEAD(_request:Request,context:{params:Promise<{productId:string;routeId:string}>}){const {route}=await resolve(context);return new Response(null,{status:route?204:404,headers:{"Cache-Control":"no-store, private","X-Robots-Tag":"noindex, nofollow"}})}
+export async function GET(request:Request,context:{params:Promise<{productId:string;routeId:string}>}){const {productId,routeId,route}=await resolve(context);if(!route)return new Response("Route unavailable",{status:404,headers:{"Cache-Control":"no-store, private","X-Robots-Tag":"noindex, nofollow"}});if(request.headers.get("dnt")!=="1"&&request.headers.get("sec-gpc")!=="1"){const now=new Date().toISOString();console.info(analyticsLogLine({schemaVersion:1,type:"route_click",path:`/go/${productId}/${routeId}`,occurredAt:now,productId,routeId},now))}return new Response(null,{status:302,headers:{Location:route.url,"Cache-Control":"no-store, private","X-Robots-Tag":"noindex, nofollow"}})}
