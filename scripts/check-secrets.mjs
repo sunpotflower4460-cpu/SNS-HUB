@@ -25,6 +25,20 @@ function* walk(dir,skipped){
   }
 }
 
+function scanTextFile(file){
+  const fd=fs.openSync(file,"r"),buffer=Buffer.allocUnsafe(256*1024);let carry="";
+  try{
+    for(;;){
+      const bytes=fs.readSync(fd,buffer,0,buffer.length,null);if(bytes===0)break;
+      const text=carry+buffer.subarray(0,bytes).toString("utf8");
+      for(const [name,re] of patterns)if(re.test(text))return name;
+      carry=text.slice(-1024);
+    }
+    for(const [name,re] of patterns)if(re.test(carry))return name;
+    return null;
+  }finally{fs.closeSync(fd)}
+}
+
 const roots=buildOnly?[path.join(root,".next")]:[root];
 if(buildOnly&&!fs.existsSync(roots[0])){console.error(".next build output is missing; run the production build before build secret scan");process.exit(1)}
 const hits=[];
@@ -33,9 +47,7 @@ for(const scanRoot of roots){
   for(const file of walk(scanRoot,skipped)){
     const relative=path.relative(root,file),ext=path.extname(file).toLowerCase();
     if(!textExtensions.has(ext)&&!explicitNames.has(path.basename(file)))continue;
-    const stat=fs.statSync(file);if(stat.size>5_000_000)continue;
-    const text=fs.readFileSync(file,"utf8");
-    for(const [name,re] of patterns)if(re.test(text))hits.push(`${relative}: ${name}`);
+    const hit=scanTextFile(file);if(hit)hits.push(`${relative}: ${hit}`);
   }
 }
 if(hits.length){console.error(`High-confidence secret patterns detected (${buildOnly?"build":"source"}):\n${hits.join("\n")}`);process.exit(1)}
