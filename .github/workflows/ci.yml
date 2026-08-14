@@ -14,7 +14,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -24,3 +24,63 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Full repository gate
         run: npm run ci
+      - name: Runtime route and mobile browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npm start -- --hostname 127.0.0.1 --port 3000 > artifacts/hub-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/_health/content-version > artifacts/content-version.json; then
+              break
+            fi
+            if [[ "$attempt" == "30" ]]; then
+              cat artifacts/hub-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          routes=(
+            "/"
+            "/new"
+            "/search?q=%E3%82%B1%E3%83%BC%E3%83%96%E3%83%AB"
+            "/problem/cable-clutter"
+            "/category/gadget"
+            "/p/sample-magnetic-cable-dock"
+            "/disclosure"
+            "/_health/content-version"
+            "/_health/product/sample-magnetic-cable-dock"
+          )
+          for route in "${routes[@]}"; do
+            echo "smoke ${route}"
+            curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:3000${route}"
+          done
+
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [[ -z "$chrome" ]]; then
+            echo "No supported headless Chrome binary found on runner."
+            exit 1
+          fi
+          "$chrome" --version
+          for width in 320 390 768; do
+            "$chrome" --headless=new --disable-gpu --no-sandbox --hide-scrollbars \
+              --window-size="${width},1200" \
+              --screenshot="artifacts/home-${width}.png" \
+              http://127.0.0.1:3000/
+            "$chrome" --headless=new --disable-gpu --no-sandbox --hide-scrollbars \
+              --window-size="${width},1400" \
+              --screenshot="artifacts/product-${width}.png" \
+              http://127.0.0.1:3000/p/sample-magnetic-cable-dock
+          done
+      - name: Upload browser-smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sns-hub-browser-smoke
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 7
