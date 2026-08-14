@@ -14,6 +14,7 @@
     "content:manifest": "tsx scripts/hub.ts manifest",
     "hub:upsert": "tsx scripts/hub.ts upsert",
     "hub:attach-social": "tsx scripts/hub.ts social",
+    "analytics:report": "tsx scripts/analytics-report.ts",
     "security:scan": "node scripts/check-secrets.mjs",
     "security:scan:build": "node scripts/check-secrets.mjs --build-only",
     "ci": "bash scripts/local-ci.sh"
