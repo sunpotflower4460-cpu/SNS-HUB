@@ -24,6 +24,11 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Full repository gate
         run: npm run ci
+      - name: Install Japanese browser font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-cache -f
       - name: Runtime route and mobile browser smoke
         shell: bash
         run: |
