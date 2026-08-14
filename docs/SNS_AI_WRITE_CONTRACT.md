@@ -7,15 +7,17 @@ SNS-AI decides **what deserves to be featured**. SNS-HUB stores, validates, rend
 ## Git-backed MVP sequence
 
 1. SNS-AI completes discovery, verification, editorial scoring and route resolution.
-2. Build one canonical record matching `schemas/product.schema.json`.
+2. Build one canonical record matching `schemas/product.schema.json` with `publication.status = ready`.
 3. Upsert `data/products/<productId>.json` using stable `productId` and stable `slug`.
 4. Run the full `npm run ci` repository gate.
 5. Commit/push the Hub change.
 6. Deployment builds the same content and exposes `/_health/content-version`.
 7. SNS-AI polls the **normal Hub health URL**, never affiliate tracking URLs.
-8. Only when the expected `contentVersion` is visible is the item `HUB_READY`.
-9. Publish X and/or Instagram.
-10. Attach social post IDs with `npm run hub:attach-social -- <productId> <x|instagram> <postId> <url> [publishedAt]`; replaying the same post is a true no-op.
+8. Only when the expected `contentVersion` is visible and the product probe reports `publishReady: true` is the item `HUB_READY`.
+9. A `ready` item has a stable directly reachable product URL but is intentionally excluded from Home/New/Search/Problem/Category discovery surfaces.
+10. Publish X and/or Instagram.
+11. Attach each successful social post with `npm run hub:attach-social -- <productId> <x|instagram> <postId> <url> [publishedAt]`. The first successful social backlink transitions `ready → published`, making the item discoverable. If both social legs fail, it stays `ready` and unfeatured.
+12. Retry only failed social legs. Replaying an unchanged backlink is a true no-op.
 
 ## Canonical upsert semantics
 
@@ -45,6 +47,13 @@ Canonical operation key:
 - replay replaces the same identity rather than appending duplicates
 - replaying an unchanged social backlink does not mutate `updatedAt` or `contentVersion`
 
+## Failure behavior encoded by the Hub
+
+- Hub prepared + both social posts fail → item remains `ready`, directly reachable but unfeatured
+- X succeeds + Instagram fails → X backlink is recorded, item becomes `published`, Instagram can be retried later without duplicating X
+- social callback arrives before HUB_READY while item is still `staged` → update is rejected
+- product becomes unavailable/discontinued → stable page remains reachable, current purchase CTA disappears
+
 ## Do not do
 
 - do not write provider secrets into product JSON
@@ -52,6 +61,7 @@ Canonical operation key:
 - do not swap an unavailable product for a different product under the same URL
 - do not change the slug of an existing product
 - do not treat a missing current route as permission to preserve an old ACTIVE route
+- do not expose a `ready` item on discovery surfaces before a social publish succeeds
 - do not publish Hub-dependent CTA before expected contentVersion is deployed
 - do not probe affiliate tracking links to decide readiness
 

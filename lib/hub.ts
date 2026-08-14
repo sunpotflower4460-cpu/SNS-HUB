@@ -18,7 +18,7 @@ export type Product = {
   routes: {
     routeId:string; provider:"amazon"|"rakuten"|"a8"|"valuecommerce"|"impact"|"direct"|"other";
     merchant:string;url:string;routeType:"affiliate"|"official"|"non-affiliate";
-    platforms:string[];status:RouteStatus;destinationProductMatch:boolean;verifiedAt:string;
+    platforms:("hub"|"x"|"instagram")[];status:RouteStatus;destinationProductMatch:boolean;verifiedAt:string;
     disclosureRequired:boolean;notes:string|null;
   }[];
   alternatives:{productId:string;relation:"similar"|"cheaper"|"current-alternative"|"different-use-case";reason:string;verifiedAt:string}[];
@@ -38,7 +38,8 @@ function readJson<T>(file:string):T{return JSON.parse(fs.readFileSync(file,"utf8
 function compareStable(a:string,b:string){return a<b?-1:a>b?1:0}
 export function products():Product[]{return fs.readdirSync(PRODUCT_DIR).filter(x=>x.endsWith(".json")).sort(compareStable).map(x=>readJson<Product>(path.join(PRODUCT_DIR,x)))}
 export function isPublicProduct(p:Product){return ["ready","published","archived"].includes(p.publication.status)}
-export function isDiscoverableProduct(p:Product){return ["ready","published"].includes(p.publication.status)&&!["unavailable","discontinued"].includes(p.availability)}
+export function isPublishReadyProduct(p:Product){return ["ready","published"].includes(p.publication.status)&&!["unavailable","discontinued"].includes(p.availability)}
+export function isDiscoverableProduct(p:Product){return p.publication.status==="published"&&!["unavailable","discontinued"].includes(p.availability)}
 export function publicProducts(){return products().filter(isPublicProduct)}
 export function discoverableProducts(){return products().filter(isDiscoverableProduct)}
 export function categories(){return readJson<Taxonomy[]>(path.join(DATA,"categories.json"))}
@@ -50,7 +51,7 @@ export function problemBySlug(slug:string){return problemTags().find(x=>x.slug==
 
 export function ageDays(value:string|null,now=new Date()){if(!value)return null;const d=new Date(value);if(Number.isNaN(d.valueOf()))return null;return Math.floor((now.valueOf()-d.valueOf())/86_400_000)}
 export function isFresh(value:string|null,days:number,now=new Date()){const age=ageDays(value,now);return age!==null&&age>=0&&age<=days}
-export function isHttpsUrl(value:string){if(value!==value.trim())return false;try{return new URL(value).protocol==="https:"}catch{return false}}
+export function isHttpsUrl(value:string){if(value!==value.trim())return false;try{const url=new URL(value);return url.protocol==="https:"&&!url.username&&!url.password}catch{return false}}
 export function visiblePrice(p:Product,now=new Date()){if(p.publication.status==="archived"||["unavailable","discontinued"].includes(p.availability))return null;return p.pricing.display&&isFresh(p.pricing.verifiedAt??p.freshness.lastPriceVerifiedAt,PRICE_FRESH_DAYS,now)?p.pricing.display:null}
 export function healthyRoutes(p:Product,now=new Date()){if(p.publication.status==="archived"||["unavailable","discontinued"].includes(p.availability))return [];return p.routes.filter(r=>r.status==="ACTIVE"&&r.destinationProductMatch&&r.platforms.includes("hub")&&isHttpsUrl(r.url)&&isFresh(r.verifiedAt,ROUTE_FRESH_DAYS,now))}
 export function requiresAffiliateDisclosure(p:Product,now=new Date()){return healthyRoutes(p,now).some(r=>r.routeType==="affiliate"&&r.disclosureRequired)}
@@ -63,4 +64,4 @@ export function manifest(){const ps=products(),generatedAt=ps.flatMap(p=>[p.publ
 export function formatDateJa(v:string|null){if(!v)return"未確認";const d=new Date(v);return Number.isNaN(d.valueOf())?"未確認":new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"short",day:"numeric"}).format(d)}
 export function mergeByKey<T>(a:T[],b:T[],key:(x:T)=>string){const m=new Map(a.map(x=>[key(x),x]));for(const x of b)m.set(key(x),x);return [...m.values()]}
 export function mergeCanonical(existing:Product|null,incoming:Product):Product{if(!existing)return incoming;if(existing.productId!==incoming.productId)throw new Error("productId mismatch");if(existing.slug!==incoming.slug)throw new Error(`stable slug mismatch: ${existing.slug} -> ${incoming.slug}`);return {...incoming,publication:{...incoming.publication,firstPublishedAt:existing.publication.firstPublishedAt??incoming.publication.firstPublishedAt},routes:incoming.routes,social:mergeByKey(existing.social,incoming.social,x=>`${x.platform}:${x.postId}`)}}
-export function attachSocialBacklink(p:Product,backlink:SocialBacklink,updatedAt=new Date().toISOString()):{product:Product;changed:boolean}{const key=`${backlink.platform}:${backlink.postId}`,current=p.social.find(x=>`${x.platform}:${x.postId}`===key);if(current&&stableStringify(current)===stableStringify(backlink))return {product:p,changed:false};return {product:{...p,social:mergeByKey(p.social,[backlink],x=>`${x.platform}:${x.postId}`),publication:{...p.publication,updatedAt}},changed:true}}
+export function attachSocialBacklink(p:Product,backlink:SocialBacklink,updatedAt=new Date().toISOString()):{product:Product;changed:boolean}{const key=`${backlink.platform}:${backlink.postId}`,current=p.social.find(x=>`${x.platform}:${x.postId}`===key),publishTransition=p.publication.status==="ready";if(current&&stableStringify(current)===stableStringify(backlink)&&!publishTransition)return {product:p,changed:false};return {product:{...p,social:mergeByKey(p.social,[backlink],x=>`${x.platform}:${x.postId}`),publication:{...p.publication,status:publishTransition?"published":p.publication.status,updatedAt}},changed:true}}
