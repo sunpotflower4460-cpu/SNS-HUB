@@ -1,7 +1,18 @@
-import assert from "node:assert/strict";import test from "node:test";import {contentVersion,healthyRoutes,mergeCanonical,products,search,visiblePrice} from "../lib/hub";
-test("10 representative fixtures exist",()=>assert.equal(products().length,10));
+import assert from "node:assert/strict";
+import test from "node:test";
+import {attachSocialBacklink,bySlug,contentVersion,freshnessState,healthyRoutes,isDiscoverableProduct,mergeCanonical,products,requiresAffiliateDisclosure,search,stableStringify,visiblePrice} from "../lib/hub";
+
+test("at least 10 representative sample fixtures exist",()=>assert.ok(products().filter(p=>p.productId.startsWith("sample-")).length>=10));
 test("Japanese problem search works",()=>assert.ok(search("ケーブル").some(p=>p.productId==="sample-magnetic-cable-dock")));
+test("archived item remains reachable but is not discoverable",()=>{const p=products().find(x=>x.productId==="sample-legacy-travel-adapter")!;assert.equal(isDiscoverableProduct(p),false);assert.equal(bySlug(p.slug)?.productId,p.productId);assert.equal(search("旧型ミニ変換アダプター").some(x=>x.productId===p.productId),false)});
 test("contentVersion is deterministic",()=>assert.equal(contentVersion(),contentVersion()));
-test("route replay is idempotent",()=>{const p=products()[0],m=mergeCanonical(p,{...p});assert.equal(m.routes.length,p.routes.length)});
+test("stable serializer ignores object key order",()=>assert.equal(stableStringify({b:1,a:2}),stableStringify({a:2,b:1})));
+test("route replay is content-idempotent",()=>{const p=products()[0],m=mergeCanonical(p,structuredClone(p));assert.deepEqual(m,p)});
+test("stable public slug cannot change",()=>{const p=products()[0];assert.throws(()=>mergeCanonical(p,{...structuredClone(p),slug:`${p.slug}-changed`}),/stable slug mismatch/)});
 test("inactive route is hidden",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.routes[0].status="REVERIFY_DUE";assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,0)});
+test("route without hub eligibility is hidden",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.routes[0].platforms=["x"];assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,0)});
+test("unavailable product exposes no purchase route",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.availability="unavailable";assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,0)});
 test("stale exact price is hidden",()=>{const p=structuredClone(products()[0]);p.pricing={display:"¥1,000",currency:"JPY",verifiedAt:"2026-07-01T00:00:00Z"};assert.equal(visiblePrice(p,new Date("2026-08-14T12:00:00Z")),null)});
+test("future product verification is not fresh",()=>{const p=structuredClone(products()[0]);p.freshness.lastProductVerifiedAt="2026-08-15T00:00:00Z";assert.equal(freshnessState(p,new Date("2026-08-14T12:00:00Z")),"unknown")});
+test("multiple healthy providers can coexist and affiliate disclosure is derived from visible routes",()=>{const p=structuredClone(products().find(x=>x.routes.length)!);p.routes.push({...p.routes[0],routeId:"sample-affiliate",provider:"other",merchant:"Sample affiliate",url:"https://example.org/sample-affiliate",routeType:"affiliate",disclosureRequired:true});assert.equal(healthyRoutes(p,new Date("2026-08-14T12:00:00Z")).length,2);assert.equal(requiresAffiliateDisclosure(p,new Date("2026-08-14T12:00:00Z")),true)});
+test("social backlink replay is a true no-op",()=>{const p=structuredClone(products()[0]),backlink={platform:"x" as const,postId:"sample-post",url:"https://x.com/example/status/1",publishedAt:"2026-08-14T00:00:00Z"},first=attachSocialBacklink(p,backlink,"2026-08-14T01:00:00Z"),second=attachSocialBacklink(first.product,backlink,"2026-08-14T02:00:00Z");assert.equal(first.changed,true);assert.equal(second.changed,false);assert.equal(second.product.publication.updatedAt,"2026-08-14T01:00:00Z")});
