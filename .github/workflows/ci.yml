@@ -20,7 +20,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-          cache: npm
       - name: Install declared dependencies
         run: npm install --no-audit --no-fund
       - name: Full repository gate
