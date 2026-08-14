@@ -1,8 +1,8 @@
 # Acceptance matrix
 
-This matrix maps the handoff acceptance requirements to repository checks. A green source-level check is not a substitute for the real dependency production build gate.
+This matrix maps the handoff acceptance requirements to repository checks and real pull-request runtime verification.
 
-## Automated in the repository
+## Automated and verified
 
 ### Data contract and lifecycle
 
@@ -26,6 +26,7 @@ This matrix maps the handoff acceptance requirements to repository checks. A gre
 - Japanese problem search has regression coverage
 - empty result states are implemented
 - verified alternatives resolve only to currently discoverable records
+- the production Next.js build exposes `/_health/content-version` and `/_health/product/<productId>` using the escaped `%5Fhealth` App Router directory while preserving the required public underscore URL
 
 ### Affiliate safety
 
@@ -46,23 +47,36 @@ This matrix maps the handoff acceptance requirements to repository checks. A gre
 
 ### Privacy and security
 
-- source secret scan is part of local CI
+- source secret scan is part of CI
 - generated `.next` output is scanned again after production build
 - analytics accepts a fixed sanitized event schema and rejects query strings so search text is not collected
 - no persistent visitor identifier is generated; return visits use only local boolean state
 - DNT/GPC disables client analytics
 
-## Must still pass before merge
+### Real dependency/build/runtime verification
 
-These checks require a network-enabled environment with the real npm dependency graph and/or a real browser. Keep the PR in draft until all are green.
+Pull-request CI has successfully completed all of the following with Node 22 and the declared real npm dependencies:
 
-- install the locked/declared npm dependency graph successfully
-- run the complete `npm run ci` using real `next`, `react`, TypeScript, ESLint, AJV and `tsx`
-- complete a production `next build`
-- run the post-build secret scan against the actual `.next` bundles and source maps
-- launch the production/dev app and smoke-test Home, product, problem, category, search, disclosure and health routes
-- mobile visual smoke at representative widths such as 320px, 390px and 768px, including long Japanese text, navigation, CTA layout and empty states
-- verify the deployed public `contentVersion` equals the expected commit content before enabling Hub-dependent SNS publication
+- dependency installation
+- complete `npm run ci`
+- production `next build`
+- post-build secret scan against actual `.next` output
+- runtime HTTP smoke of Home, New, Search, problem, category, product, disclosure, content-version health, and product health
+- headless Chrome rendering at 320px, 390px and 768px after installing Noto CJK
+- manual review of the generated Home/product screenshots for Japanese wrapping, navigation/CTA visibility, card layout, and horizontal overflow
+
+No layout-breaking overflow or clipping was observed in the reviewed screenshots.
+
+## Remaining external activation gate
+
+Repository/build/browser acceptance is green. Before Hub-dependent live SNS publication is enabled, the deployed production service must still satisfy:
+
+- an HTTPS public origin for this server-rendered Next.js application
+- public `/_health/content-version` equals the expected Git-backed `contentVersion`
+- public `/_health/product/<productId>` reports `publishReady=true` for the staged item
+- the SNS-AI deployment is configured with the same Hub origin and a narrowly scoped Hub repository credential
+
+Keep live Hub-dependent publishing disabled until these deployment/configuration checks are green.
 
 ## Explicitly not automated here
 
