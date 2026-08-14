@@ -1,0 +1,36 @@
+{
+  "name": "sns-hub",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run validate:data && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "validate:data": "tsx scripts/hub.ts validate",
+    "report:freshness": "tsx scripts/hub.ts freshness",
+    "content:manifest": "tsx scripts/hub.ts manifest",
+    "hub:upsert": "tsx scripts/hub.ts upsert",
+    "hub:attach-social": "tsx scripts/hub.ts social",
+    "ci": "bash scripts/local-ci.sh"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "next": "16.2.11",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.2.11",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {"node": ">=22"}
+}
